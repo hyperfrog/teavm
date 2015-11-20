@@ -18,6 +18,8 @@ package org.teavm.classlib.java.lang;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.teavm.classlib.java.io.TInputStream;
+import org.teavm.classlib.java.io.TByteArrayInputStream;
 import org.teavm.classlib.impl.DeclaringClassMetadataGenerator;
 import org.teavm.classlib.java.lang.annotation.TAnnotation;
 import org.teavm.classlib.java.lang.reflect.TAnnotatedElement;
@@ -25,6 +27,7 @@ import org.teavm.platform.Platform;
 import org.teavm.platform.PlatformClass;
 import org.teavm.platform.metadata.ClassResource;
 import org.teavm.platform.metadata.ClassScopedMetadataProvider;
+import org.teavm.jso.JSBody;
 
 /**
  *
@@ -44,6 +47,27 @@ public class TClass<T> extends TObject implements TAnnotatedElement {
         this.platformClass = platformClass;
         platformClass.setJavaClass(Platform.getPlatformObject(this));
     }
+ 
+    public TInputStream getResourceAsStream(TString name) {
+        // name = resolveName(name);
+        byte[] arr = getResource(name);
+        return arr == null ? null : new TByteArrayInputStream(arr);    }
+
+    @JSBody(params = "name", script = ""
+        + "var xhr = new XMLHttpRequest();"
+        + "xhr.open('GET', name, false);"
+        + "xhr.overrideMimeType('text/plain; charset=x-user-defined');"
+        + "xhr.send(null);"
+        + "var bytes = null;"
+        + "if (xhr.status === 200) {"
+        + "    bytes = [];"
+        + "    for (var i = 0; i < xhr.response.length; ++i) {"
+        + "        bytes.push(xhr.response.charCodeAt(i) & 0xff);"
+        + "    }"
+        + "}"
+        + "return bytes;"
+    )
+    private static native byte[] getResource(TString name);
 
     public static TClass<?> getClass(PlatformClass cls) {
         if (cls == null) {
