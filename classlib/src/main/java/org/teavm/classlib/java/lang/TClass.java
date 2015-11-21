@@ -49,13 +49,17 @@ public class TClass<T> extends TObject implements TAnnotatedElement {
     }
  
     public TInputStream getResourceAsStream(TString name) {
-        // name = resolveName(name);
+        name = resolveName(name);
         byte[] arr = getResource(name);
-        return arr == null ? null : new TByteArrayInputStream(arr);    }
+        return arr == null ? null : new TByteArrayInputStream(arr);
+    }
 
     @JSBody(params = "name", script = ""
+        + " if (name === null) {"
+        + "    return name;"
+        + "}"
         + "var xhr = new XMLHttpRequest();"
-        + "xhr.open('GET', name, false);"
+        + "xhr.open('GET', '__res/' + name, false);"
         + "xhr.overrideMimeType('text/plain; charset=x-user-defined');"
         + "xhr.send(null);"
         + "var bytes = null;"
@@ -69,6 +73,33 @@ public class TClass<T> extends TObject implements TAnnotatedElement {
     )
     private static native byte[] getResource(TString name);
 
+    /**
+     * Add a package name prefix if the name is not absolute Remove leading "/"
+     * if name is absolute
+     */
+    private TString resolveName(TString name) {
+        if (name == null) {
+            return name;
+        }
+        
+        String fullName = name.toString();
+        
+        if (!fullName.startsWith("/")) {
+            TClass<?> c = this;
+            while (c.isArray()) {
+                c = c.getComponentType();
+            }
+            TString baseName = c.getName();
+            int index = baseName.lastIndexOf('.');
+            if (index != -1) {
+                fullName = baseName.substring(0, index).replace('.', '/')+ "/" + fullName;
+            }
+        } else {
+            fullName = fullName.substring(1);
+        }
+        return TString.wrap(fullName);
+    }
+    
     public static TClass<?> getClass(PlatformClass cls) {
         if (cls == null) {
             return null;
